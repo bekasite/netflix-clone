@@ -3,7 +3,7 @@ import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 import PlayButton from '@/components/PlayButton';
 import useInfoModalStore from '@/hooks/useInfoModalStore';
-import useBillboard from '@/hooks/useBillboard';
+// import useBillboard from '@/hooks/useBillboard';
 
 interface BillboardProps {
   data: any;
