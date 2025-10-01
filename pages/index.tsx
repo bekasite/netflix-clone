@@ -56,13 +56,13 @@ const Home = () => {
   return (
     <>
     
-      <InfoModal visible={isOpen} onClose={closeModal} data={movieData || {}}  />
+      <InfoModal visible={isOpen} onClose={closeModal} data={movieData}  />
       <Navbar />
       {popularMovies.length > 0 && <Billboard data={popularMovies[0]} />}
       <div className="pb-40">
         <MovieList title="Popular Movies" data={popularMovies} />
         {/* If you want to keep favorites, you'll need to implement it differently */}
-        <MovieList title="My List" data={useFavorites} />
+        {/* <MovieList title="My List" data={useFavorites} /> */}
       </div>
     </>
   )
