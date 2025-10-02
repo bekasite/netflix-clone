@@ -1,103 +1,85 @@
+import axios from 'axios';
+import { useCallback, useState } from 'react';
+import { NextPageContext } from 'next';
+import { getSession, signIn } from 'next-auth/react';
+import { useRouter } from 'next/router';
+import { FcGoogle } from 'react-icons/fc';
+import { FaGithub } from 'react-icons/fa';
+
+import Input from '@/components/Input';
+
+export async function getServerSideProps(context: NextPageContext) {
+  const session = await getSession(context);
+
+  if (session) {
+    return {
+      redirect: {
+        destination: '/',
+        permanent: false,
+      }
+    }
+  }
+
+  return {
+    props: {}
+  }
+}
+
 const Auth = () => {
   const router = useRouter();
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(''); // Add error state
+  const [isLoading, setIsLoading] = useState(false); // Add loading state
 
   const [variant, setVariant] = useState('login');
 
   const toggleVariant = useCallback(() => {
     setVariant((currentVariant) => currentVariant === 'login' ? 'register' : 'login');
-    setError(''); // Clear errors when toggling
   }, []);
 
   const login = useCallback(async () => {
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
-
     setIsLoading(true);
-    setError('');
-    
     try {
-      const result = await signIn('credentials', {
+      await signIn('credentials', {
         email,
         password,
         redirect: false,
+        callbackUrl: '/',
       });
 
-      if (result?.error) {
-        setError('Invalid email or password');
-      } else {
-        router.push('/profiles');
-      }
+      router.push('/profiles');
     } catch (error) {
       console.log(error);
-      setError('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   }, [email, password, router]);
 
   const register = useCallback(async () => {
-    // Validation
-    if (!email || !name || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
     setIsLoading(true);
-    setError('');
-
     try {
-      await axios.post('/api/register', {
+      const response = await axios.post('/api/register', {
         email,
         name,
         password
       });
-
-      // Auto-login after successful registration
-      await login();
+  
+      login();
     } catch (error: any) {
       console.log('Registration error:', error);
       
+      // Show user-friendly error message
       if (error.response?.data?.error) {
-        setError(error.response.data.error);
-      } else if (error.code === 'ERR_NETWORK') {
-        setError('Network error. Please check your connection.');
+        alert(error.response.data.error); // Or use a better UI feedback
       } else {
-        setError('Registration failed. Please try again.');
+        alert('Registration failed. Please try again.');
       }
       
       setIsLoading(false);
     }
   }, [email, name, password, login]);
-
-  // Add this function to handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (variant === 'login') {
-      login();
-    } else {
-      register();
-    }
-  };
-
   return (
     <div className="relative h-full w-full bg-[url('/images/hero.jpg')] bg-no-repeat bg-center bg-fixed bg-cover">
       <div className="bg-black w-full h-full lg:bg-opacity-50">
@@ -109,61 +91,48 @@ const Auth = () => {
             <h2 className="text-white text-4xl mb-8 font-semibold">
               {variant === 'login' ? 'Sign in' : 'Register'}
             </h2>
-            
-            {/* Error Message Display */}
-            {error && (
-              <div className="bg-red-600 text-white p-3 rounded-md mb-4 text-center">
-                {error}
-              </div>
-            )}
-            
-            <form onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-4">
-                {variant === 'register' && (
-                  <Input
-                    id="name"
-                    type="text"
-                    label="Username"
-                    value={name}
-                    onChange={(e: any) => setName(e.target.value)} 
-                    disabled={isLoading}
-                  />
-                )}
+            <div className="flex flex-col gap-4">
+              {variant === 'register' && (
                 <Input
-                  id="email"
-                  type="email"
-                  label="Email address"
-                  value={email}
-                  onChange={(e: any) => setEmail(e.target.value)} 
-                  disabled={isLoading}
+                  id="name"
+                  type="text"
+                  label="Username"
+                  value={name}
+                  onChange={(e: any) => setName(e.target.value)} 
+                  // disabled={isLoading} // Disable inputs when loading
                 />
-                <Input
-                  type="password" 
-                  id="password" 
-                  label="Password" 
-                  value={password}
-                  onChange={(e: any) => setPassword(e.target.value)} 
-                  disabled={isLoading}
-                />
-              </div>
-              
-              <button 
-                type="submit"
-                disabled={isLoading}
-                className="bg-red-600 py-3 text-white rounded-md w-full mt-10 hover:bg-red-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    {variant === 'login' ? 'Logging in...' : 'Signing up...'}
-                  </>
-                ) : (
-                  variant === 'login' ? 'Login' : 'Sign up'
-                )}
-              </button>
-            </form>
-
-            {/* Rest of your social login buttons */}
+              )}
+              <Input
+                id="email"
+                type="email"
+                label="Email address or phone number"
+                value={email}
+                onChange={(e: any) => setEmail(e.target.value)} 
+                // disabled={isLoading} // Disable inputs when loading
+              />
+              <Input
+                type="password" 
+                id="password" 
+                label="Password" 
+                value={password}
+                onChange={(e: any) => setPassword(e.target.value)} 
+                // disabled={isLoading} // Disable inputs when loading
+              />
+            </div>
+            <button 
+              onClick={variant === 'login' ? login : register} 
+              disabled={isLoading} // Disable button when loading
+              className="bg-red-600 py-3 text-white rounded-md w-full mt-10 hover:bg-red-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  {variant === 'login' ? 'Logging in...' : 'Signing up...'}
+                </>
+              ) : (
+                variant === 'login' ? 'Login' : 'Sign up'
+              )}
+            </button>
             <div className="flex flex-row items-center gap-4 mt-8 justify-center">
               <div 
                 onClick={() => !isLoading && signIn('google', { callbackUrl: '/profiles' })} 
@@ -178,7 +147,6 @@ const Auth = () => {
                 <FaGithub size={32} />
               </div>
             </div>
-            
             <p className="text-neutral-500 mt-12">
               {variant === 'login' ? 'First time using Netflix?' : 'Already have an account?'}
               <span 
@@ -187,6 +155,7 @@ const Auth = () => {
               >
                 {variant === 'login' ? 'Create an account' : 'Login'}
               </span>
+              .
             </p>
           </div>
         </div>
@@ -194,3 +163,5 @@ const Auth = () => {
     </div>
   );
 }
+
+export default Auth;
