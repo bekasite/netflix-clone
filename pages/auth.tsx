@@ -60,19 +60,26 @@ const Auth = () => {
   const register = useCallback(async () => {
     setIsLoading(true);
     try {
-      await axios.post('/api/register', {
+      const response = await axios.post('/api/register', {
         email,
         name,
         password
       });
-
+  
       login();
-    } catch (error) {
-      console.log(error);
+    } catch (error: any) {
+      console.log('Registration error:', error);
+      
+      // Show user-friendly error message
+      if (error.response?.data?.error) {
+        alert(error.response.data.error); // Or use a better UI feedback
+      } else {
+        alert('Registration failed. Please try again.');
+      }
+      
       setIsLoading(false);
     }
   }, [email, name, password, login]);
-
   return (
     <div className="relative h-full w-full bg-[url('/images/hero.jpg')] bg-no-repeat bg-center bg-fixed bg-cover">
       <div className="bg-black w-full h-full lg:bg-opacity-50">
