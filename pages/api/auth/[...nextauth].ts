@@ -1,4 +1,4 @@
-import NextAuth, { type AuthOptions } from 'next-auth';
+import NextAuth, { AuthOptions } from 'next-auth';
 import GithubProvider from 'next-auth/providers/github';
 import GoogleProvider from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
@@ -44,7 +44,10 @@ export const authOptions: AuthOptions = {
           throw new Error('Email does not exist');
         }
 
-        const isCorrectPassword = await compare(credentials.password, user.hashedPassword);
+        const isCorrectPassword = await compare(
+          credentials.password, 
+          user.hashedPassword
+        );
 
         if (!isCorrectPassword) {
           throw new Error('Incorrect password');
@@ -55,17 +58,38 @@ export const authOptions: AuthOptions = {
     })
   ],
   pages: {
-    signIn: '/auth'
+    signIn: '/auth',
+    signOut: '/auth',
+    error: '/auth',
   },
   debug: process.env.NODE_ENV === 'development',
   adapter: PrismaAdapter(prismadb),
   session: { 
-    strategy: 'jwt' as const  // Explicitly type as 'jwt' literal
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  jwt: {
-    secret: process.env.NEXTAUTH_JWT_SECRET,
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl + '/profiles'
+    }
   },
-  secret: process.env.NEXTAUTH_SECRET
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export default NextAuth(authOptions);
